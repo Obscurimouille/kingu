@@ -4,8 +4,6 @@
  *   (for v1 usermods using just usermod.cpp, you can ignore this file)
  */
 
-#include "my_usermod.h"
-
 /*
  * Add/uncomment your usermod filename here (and once more below)
  * || || ||
@@ -170,6 +168,12 @@
 #ifdef USERMOD_BOBLIGHT
   #include "../usermods/boblight/boblight.h"
 #endif
+
+// #ifdef USERMOD_MMA8452
+//   #include "../usermods/MMA8452/mma8452_usermod.h"
+// #endif
+
+#include "mma8452_usermod.h"
 
 #if defined(WLED_USE_SD_MMC) || defined(WLED_USE_SD_SPI)
 // This include of SD.h and SD_MMC.h must happen here, else they won't be
@@ -352,5 +356,10 @@ void registerUsermods()
   usermods.add(new ShtUsermod());
   #endif
 
-  usermods.add(new MyCustomUsermod());
+  // #ifdef USERMOD_MMA8452
+  // usermods.add(new MMA8452Usermod());
+  // #endif
+
+  usermods.add(new MMA8452Usermod());
+
 }
