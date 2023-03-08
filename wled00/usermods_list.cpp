@@ -4,6 +4,8 @@
  *   (for v1 usermods using just usermod.cpp, you can ignore this file)
  */
 
+#include "my_usermod.h"
+
 /*
  * Add/uncomment your usermod filename here (and once more below)
  * || || ||
@@ -349,4 +351,6 @@ void registerUsermods()
   #ifdef USERMOD_SHT
   usermods.add(new ShtUsermod());
   #endif
+
+  usermods.add(new MyCustomUsermod());
 }
