@@ -31,6 +31,7 @@ class MMA8452Usermod : public Usermod {
     bool is_shaking = false;
     bool is_shaking_flag = false;
     bool led = false;
+    bool no_color_mode = false;
 
     // any private methods should go here (non-inline methosd should be defined out of class)
     void handleAccelerometer();
@@ -38,6 +39,15 @@ class MMA8452Usermod : public Usermod {
     bool isShakingEvent();
     float getShakingNorm(float x, float y, float z);
     void printXYZ();
+
+    /*
+     * Turn off all leds
+     */
+    void turnOff()
+    {
+      bri = 0;
+      stateUpdated(CALL_MODE_DIRECT_CHANGE);
+    }
 
   public:
 
@@ -53,7 +63,6 @@ class MMA8452Usermod : public Usermod {
       digitalWrite(3, HIGH);
       
       esp_sleep_wakeup_cause_t wakeup_reason;
-      printf("esp_sleep_wakeup_cause_t wakeup_reason: %d", wakeup_reason);
       wakeup_reason = esp_sleep_get_wakeup_cause();
       printf("esp_sleep_get_wakeup_cause(): %d", wakeup_reason);
 
@@ -99,6 +108,9 @@ class MMA8452Usermod : public Usermod {
           printf("Button pressed\n");
           cpt++;
           if(cpt == 5) {
+            no_color_mode = true;
+          }
+          if(cpt == 6) {
             esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
             esp_deep_sleep_start(); 
             printf("This should not be printed\n");
@@ -107,6 +119,17 @@ class MMA8452Usermod : public Usermod {
         
         lastTime = millis();
       }
+    }
+
+    /*
+     * handleOverlayDraw() is called just before every show() (LED strip update frame) after effects have set the colors.
+     * Use this to blank out some LEDs or set them to a different color regardless of the set effect mode.
+     * Commonly used for custom clocks (Cronixie, 7 segment)
+     */
+    void handleOverlayDraw()
+    {
+      if(no_color_mode)
+        strip.fill(RGBW32(0,0,0,0)); // set all pixels to black
     }
 
     /**
