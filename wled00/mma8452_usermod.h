@@ -19,6 +19,7 @@
 #define Z_AMP 1.2
 
 #define INT_PIN_MASK 0x10
+#define INT_PIN_MASK 0x10
 
 //This is an empty v2 usermod template. Please see the file usermod_v2_example.h in the EXAMPLE_v2 usermod folder for documentation on the functions you can use!
 
@@ -32,6 +33,12 @@ class MMA8452Usermod : public Usermod {
     bool is_shaking_flag = false;
     bool led = false;
     bool no_color_mode = false;
+    bool indicator = false;
+    bool indicator_running = false;
+    unsigned long indicatorActivationTime = 0;
+    unsigned long indicatorDuration = 3000;
+    int8_t lastPreset = 0;
+    int8_t lowPowerIndicatorPreset = 10;
 
     // any private methods should go here (non-inline methosd should be defined out of class)
     void handleAccelerometer();
@@ -39,15 +46,7 @@ class MMA8452Usermod : public Usermod {
     bool isShakingEvent();
     float getShakingNorm(float x, float y, float z);
     void printXYZ();
-
-    /*
-     * Turn off all leds
-     */
-    void turnOff()
-    {
-      bri = 0;
-      stateUpdated(CALL_MODE_DIRECT_CHANGE);
-    }
+    void lowPowerIndicatorHandler();
 
   public:
 
@@ -92,6 +91,7 @@ class MMA8452Usermod : public Usermod {
       if (strip.isUpdating()) return;
 
       // handleAccelerometer();
+      lowPowerIndicatorHandler();
       
       if(isShakingEvent()) {
         printf("Shaking Event\n");
@@ -106,15 +106,16 @@ class MMA8452Usermod : public Usermod {
 
         if(!digitalRead(9)) {
           printf("Button pressed\n");
-          cpt++;
-          if(cpt == 5) {
-            no_color_mode = true;
+          if(++cpt == 5) {
+            // no_color_mode = true;
+            cpt = 0;
+            indicator = true;
           }
-          if(cpt == 6) {
-            esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
-            esp_deep_sleep_start(); 
-            printf("This should not be printed\n");
-          }
+          // if(cpt == 6) {
+          //   esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
+          //   esp_deep_sleep_start(); 
+          //   printf("This should not be printed\n");
+          // }
         }
         
         lastTime = millis();

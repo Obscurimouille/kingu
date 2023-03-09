@@ -69,3 +69,29 @@ float MMA8452Usermod::getShakingNorm(float x, float y, float z)
 
   return norm * norm;
 }
+
+/*
+ * Indicate low power by activating a configured preset for a given time and then switching back to the preset that was selected previously
+ */
+void MMA8452Usermod::lowPowerIndicatorHandler()
+{
+  // if(!indicator && !indicator_running) return;
+  // if (lowPowerIndicationDone && lowPowerIndicatorReactivationThreshold <= batteryLevel)
+  //   lowPowerIndicationDone = false;
+  // if (lowPowerIndicatorThreshold <= batteryLevel)
+  //   return;
+  if(indicator)
+  {
+    indicatorActivationTime = millis();
+    lastPreset = currentPreset;
+    applyPreset(lowPowerIndicatorPreset);
+    indicator = false;
+    indicator_running = true;
+  }
+
+  if(indicator_running && (indicatorActivationTime + indicatorDuration) <= millis())
+  {
+    indicator_running = false;
+    applyPreset(lastPreset);
+  }
+}
