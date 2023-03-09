@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wled.h"
+#include "indicator.h"
 #include <MMA8452.h>
 
 #define SDA_PIN     20
@@ -19,7 +20,13 @@
 #define Z_AMP 1.2
 
 #define INT_PIN_MASK 0x10
-#define INT_PIN_MASK 0x10
+
+#define SLEEP_STATE 0
+#define TRANSIENT_STATE 1
+#define BATTERY_STATE 2
+#define CHARGING_STATE 3
+#define NORMAL_STATE 4
+#define OFF_STATE 5
 
 //This is an empty v2 usermod template. Please see the file usermod_v2_example.h in the EXAMPLE_v2 usermod folder for documentation on the functions you can use!
 
@@ -33,12 +40,14 @@ class MMA8452Usermod : public Usermod {
     bool is_shaking_flag = false;
     bool led = false;
     bool no_color_mode = false;
-    bool indicator = false;
-    bool indicator_running = false;
+
+
     unsigned long indicatorActivationTime = 0;
-    unsigned long indicatorDuration = 3000;
     int8_t lastPreset = 0;
-    int8_t lowPowerIndicatorPreset = 10;
+
+    bool indicatorFlag = false;
+    Indicator* indicator;
+    bool runningIndicator = false;
 
     // any private methods should go here (non-inline methosd should be defined out of class)
     void handleAccelerometer();
@@ -46,7 +55,7 @@ class MMA8452Usermod : public Usermod {
     bool isShakingEvent();
     float getShakingNorm(float x, float y, float z);
     void printXYZ();
-    void lowPowerIndicatorHandler();
+    void indicatorHandler();
 
   public:
 
@@ -91,7 +100,7 @@ class MMA8452Usermod : public Usermod {
       if (strip.isUpdating()) return;
 
       // handleAccelerometer();
-      lowPowerIndicatorHandler();
+      indicatorHandler();
       
       if(isShakingEvent()) {
         printf("Shaking Event\n");
@@ -99,17 +108,14 @@ class MMA8452Usermod : public Usermod {
 
       if (millis() - lastTime > 200) {
         printXYZ();
-        
-        // digitalWrite(3, LOW);
-        // led = !led;
-        // digitalWrite(3, led);
-
+      
         if(!digitalRead(9)) {
           printf("Button pressed\n");
+          printf("current preset: %d\n", currentPreset);
           if(++cpt == 5) {
-            // no_color_mode = true;
             cpt = 0;
-            indicator = true;
+            indicator = new Indicator(LOW_BATTERY_INDICATOR_PRESET, 3000);
+            indicatorFlag = true;
           }
           // if(cpt == 6) {
           //   esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
@@ -129,28 +135,6 @@ class MMA8452Usermod : public Usermod {
      */
     void handleOverlayDraw()
     {
-      if(no_color_mode)
-        strip.fill(RGBW32(0,0,0,0)); // set all pixels to black
-    }
-
-    /**
-     * handleButton() can be used to override default button behaviour. Returning true
-     * will prevent button working in a default way.
-     * Replicating button.cpp
-     */
-    bool handleButton(uint8_t b) {
-      yield();
-      // ignore certain button types as they may have other consequences
-      if (buttonType[b] == BTN_TYPE_NONE
-       || buttonType[b] == BTN_TYPE_RESERVED
-       || buttonType[b] == BTN_TYPE_PIR_SENSOR
-       || buttonType[b] == BTN_TYPE_ANALOG
-       || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) {
-        return false;
-      }
-
-      bool handled = false;
-
-      return handled;
+      if(no_color_mode) strip.fill(RGBW32(0,0,0,0)); // set all pixels to black
     }
 };
