@@ -18,13 +18,15 @@
 #define Y_AMP 1.1
 #define Z_AMP 1.2
 
+#define INT_PIN_MASK 0x10
+
 //This is an empty v2 usermod template. Please see the file usermod_v2_example.h in the EXAMPLE_v2 usermod folder for documentation on the functions you can use!
 
 class MMA8452Usermod : public Usermod {
   private:
     // Private class members. You can declare variables and functions only accessible to your usermod here
-    bool enabled = true;
     unsigned long lastTime = 0;
+    unsigned long cpt = 0;
     MMA8452 accelerometer;
     bool is_shaking = false;
     bool is_shaking_flag = false;
@@ -39,16 +41,6 @@ class MMA8452Usermod : public Usermod {
 
   public:
 
-    /**
-     * Enable/Disable the usermod
-     */
-    inline void enable(bool enable) { enabled = enable; }
-
-    /**
-     * Get usermod enabled/disabled state
-     */
-    inline bool isEnabled() { return enabled; }
-
     /*
      * setup() is called once at boot. WiFi is not yet connected at this point.
      * readFromConfig() is called prior to setup()
@@ -56,7 +48,14 @@ class MMA8452Usermod : public Usermod {
      */
     void setup() {
       Wire.begin(SDA_PIN, SCL_PIN);
+      pinMode(4, INPUT_PULLUP);
       pinMode(3, OUTPUT);
+      digitalWrite(3, HIGH);
+      
+      esp_sleep_wakeup_cause_t wakeup_reason;
+      printf("esp_sleep_wakeup_cause_t wakeup_reason: %d", wakeup_reason);
+      wakeup_reason = esp_sleep_get_wakeup_cause();
+      printf("esp_sleep_get_wakeup_cause(): %d", wakeup_reason);
 
       // Accelerometer initialization
       if (accelerometer.init())
@@ -66,6 +65,7 @@ class MMA8452Usermod : public Usermod {
         accelerometer.setPowerMode(MMA_HIGH_RESOLUTION);
       }
       else printf("MMA8452 initialization failed.\n");
+      lastTime = millis();
     }
 
     /*
@@ -80,7 +80,7 @@ class MMA8452Usermod : public Usermod {
      */
     void loop() {
       // if usermod is disabled or called during strip updating just exit
-      if (!enabled || strip.isUpdating()) return;
+      if (strip.isUpdating()) return;
 
       // handleAccelerometer();
       
@@ -88,11 +88,45 @@ class MMA8452Usermod : public Usermod {
         printf("Shaking Event\n");
       }
 
-      if (millis() - lastTime > 100) {
-        led = !led;
-        digitalWrite(3, led);
+      if (millis() - lastTime > 200) {
         printXYZ();
+        
+        // digitalWrite(3, LOW);
+        // led = !led;
+        // digitalWrite(3, led);
+
+        if(!digitalRead(9)) {
+          printf("Button pressed\n");
+          cpt++;
+          if(cpt == 5) {
+            esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
+            esp_deep_sleep_start(); 
+            printf("This should not be printed\n");
+          }
+        }
+        
         lastTime = millis();
       }
+    }
+
+    /**
+     * handleButton() can be used to override default button behaviour. Returning true
+     * will prevent button working in a default way.
+     * Replicating button.cpp
+     */
+    bool handleButton(uint8_t b) {
+      yield();
+      // ignore certain button types as they may have other consequences
+      if (buttonType[b] == BTN_TYPE_NONE
+       || buttonType[b] == BTN_TYPE_RESERVED
+       || buttonType[b] == BTN_TYPE_PIR_SENSOR
+       || buttonType[b] == BTN_TYPE_ANALOG
+       || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) {
+        return false;
+      }
+
+      bool handled = false;
+
+      return handled;
     }
 };
