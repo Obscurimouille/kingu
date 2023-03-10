@@ -30,6 +30,9 @@
 
 #define TRANSIENT_DURATION 8000
 
+#define WAKE_BY_SHAKE 0 // To define
+#define WAKE_BY_USB 0 // To define
+
 //This is an empty v2 usermod template. Please see the file usermod_v2_example.h in the EXAMPLE_v2 usermod folder for documentation on the functions you can use!
 
 class MMA8452Usermod : public Usermod {
@@ -42,6 +45,8 @@ class MMA8452Usermod : public Usermod {
     bool is_shaking_flag = false;
     bool led = false;
     bool no_color_mode = false;
+
+    esp_sleep_wakeup_cause_t wakeupReason;
 
     bool usb = false;
     bool charged = false;
@@ -67,6 +72,7 @@ class MMA8452Usermod : public Usermod {
     void printXYZ();
     void indicatorHandler();
     void stateMachineHandler();
+    void sleep();
 
   public:
 
@@ -81,9 +87,7 @@ class MMA8452Usermod : public Usermod {
       pinMode(3, OUTPUT);
       digitalWrite(3, HIGH);
       
-      esp_sleep_wakeup_cause_t wakeup_reason;
-      wakeup_reason = esp_sleep_get_wakeup_cause();
-      printf("esp_sleep_get_wakeup_cause(): %d", wakeup_reason);
+      wakeupReason = esp_sleep_get_wakeup_cause();
 
       // Accelerometer initialization
       if (accelerometer.init())
@@ -113,7 +117,6 @@ class MMA8452Usermod : public Usermod {
       // handleAccelerometer();
       indicatorHandler();
       
-      
       if(isShakingEvent()) {
         printf("Shaking Event\n");
       }
@@ -125,6 +128,8 @@ class MMA8452Usermod : public Usermod {
         if(!digitalRead(9)) {
           printf("Button pressed\n");
           printf("current preset: %d\n", currentPreset);
+          printf("wakeupReason: %d", wakeupReason);
+
           if(++cpt == 5) {
             cpt = 0;
             indicator = new Indicator(LOW_BATTERY_INDICATOR_PRESET, 3000);

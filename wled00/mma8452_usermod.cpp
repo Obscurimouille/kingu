@@ -70,6 +70,12 @@ float MMA8452Usermod::getShakingNorm(float x, float y, float z)
   return norm * norm;
 }
 
+void MMA8452Usermod::sleep() {
+  esp_deep_sleep_enable_gpio_wakeup(INT_PIN_MASK, ESP_GPIO_WAKEUP_GPIO_LOW);
+  esp_deep_sleep_start(); 
+  printf("This should not be printed\n");
+}
+
 void MMA8452Usermod::indicatorHandler()
 {
   // Start new indicator
@@ -99,8 +105,20 @@ void MMA8452Usermod::stateMachineHandler() {
   switch (state)
   {
     case SLEEP_STATE: {
+      prevState = state;
+
       // Reveil par USB -> CHARGING_STATE
+      if(wakeupReason == WAKE_BY_USB) {
+        state = CHARGING_STATE;
+        return;
+      }
       // reveil par shake -> BATTERY_STATE
+      if(wakeupReason == WAKE_BY_SHAKE) {
+        state = BATTERY_STATE;
+        return;
+      }
+
+      this->sleep();
       break;
     }
     
@@ -157,17 +175,16 @@ void MMA8452Usermod::stateMachineHandler() {
         return;
       }
 
-      // Battery is charged
-      if(charged) {
-        prevState = state;
-        state = OFF_STATE;
-        return;
-      }
-
       // Start battery indicator
       if(prevState == TRANSIENT_STATE || prevState == SLEEP_STATE) {
-        indicator = new Indicator(CHARGING_INDICATOR_PRESET, 3000);
+        indicator = new Indicator(charged ? USB_PLUGGED_INDICATOR_PRESET : CHARGING_INDICATOR_PRESET, 3000);
         indicatorFlag = true;
+        // Battery is charged
+        if(charged) {
+          prevState = state;
+          state = OFF_STATE;
+          return;
+        }
       }
 
       prevState = state;
