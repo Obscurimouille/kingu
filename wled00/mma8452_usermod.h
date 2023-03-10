@@ -56,7 +56,7 @@ class MMA8452Usermod : public Usermod {
     bool runningIndicator = false;
 
     uint8_t prevState = SLEEP_STATE;
-    uint8_t state = TRANSIENT_STATE;
+    uint8_t state = SLEEP_STATE;
     int transientActivationTime = 0;
 
     // any private methods should go here (non-inline methosd should be defined out of class)
@@ -112,13 +112,14 @@ class MMA8452Usermod : public Usermod {
 
       // handleAccelerometer();
       indicatorHandler();
-      stateMachineHandler();
+      
       
       if(isShakingEvent()) {
         printf("Shaking Event\n");
       }
 
       if (millis() - lastTime > 200) {
+        stateMachineHandler();
         printXYZ();
       
         if(!digitalRead(9)) {

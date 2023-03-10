@@ -95,16 +95,18 @@ void MMA8452Usermod::indicatorHandler()
 }
 
 void MMA8452Usermod::stateMachineHandler() {
-  prevState = state;
 
   switch (state)
   {
-    case SLEEP_STATE:
+    case SLEEP_STATE: {
       // Reveil par USB -> CHARGING_STATE
       // reveil par shake -> BATTERY_STATE
       break;
+    }
+    
+    case TRANSIENT_STATE: {
+      prevState = state;
 
-    case TRANSIENT_STATE:
       // Plug a usb cable
       if(usb) {
         state = CHARGING_STATE;
@@ -121,8 +123,17 @@ void MMA8452Usermod::stateMachineHandler() {
         return;
       }
       break;
+    }
 
-    case BATTERY_STATE:
+    case BATTERY_STATE: {
+      // Comming from normal state cause usb has been unplugged
+      if(prevState == NORMAL_STATE) {
+        indicator = new Indicator(USB_UNPLUGGED_INDICATOR_PRESET, 3000);
+        indicatorFlag = true;
+      }
+
+      prevState = state;
+
       // Battery is too low
       if(cutoff) {
         state = SLEEP_STATE;
@@ -134,13 +145,33 @@ void MMA8452Usermod::stateMachineHandler() {
         return;
       }
       break;
+    }
 
-    case CHARGING_STATE:
+    case CHARGING_STATE: {
+      // Comming from battery state so continue on normal state
+      if(prevState == BATTERY_STATE) {
+        indicator = new Indicator(charged ? USB_PLUGGED_INDICATOR_PRESET : CHARGING_INDICATOR_PRESET, 3000);
+        indicatorFlag = true;
+        prevState = state;
+        state = NORMAL_STATE;
+        return;
+      }
+
       // Battery is charged
       if(charged) {
+        prevState = state;
         state = OFF_STATE;
         return;
       }
+
+      // Start battery indicator
+      if(prevState == TRANSIENT_STATE || prevState == SLEEP_STATE) {
+        indicator = new Indicator(CHARGING_INDICATOR_PRESET, 3000);
+        indicatorFlag = true;
+      }
+
+      prevState = state;
+
       // Unplug usb cable
       if(!usb) {
         state = TRANSIENT_STATE;
@@ -152,16 +183,27 @@ void MMA8452Usermod::stateMachineHandler() {
         return;
       }
       break;
+    }
 
-    case NORMAL_STATE:
+    case NORMAL_STATE: {
+      prevState = state;
       // Unplug usb cable then run on battery
       if(!usb) {
         state = BATTERY_STATE;
         return;
       }
       break;
+    }
 
-    case OFF_STATE:
+    case OFF_STATE: {
+      // Start battery indicator if comming from charging state
+      if(prevState == CHARGING_STATE) {
+        indicator = new Indicator(BATTERY_CHARGED_INDICATOR_PRESET, 3000);
+        indicatorFlag = true;
+      }
+
+      prevState = state;
+      
       // Unplug usb cable
       if(!usb) {
         state = TRANSIENT_STATE;
@@ -172,6 +214,8 @@ void MMA8452Usermod::stateMachineHandler() {
         state = NORMAL_STATE;
         return;
       }
+
       break;
+    }
   }
 }
