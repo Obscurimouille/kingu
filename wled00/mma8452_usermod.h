@@ -28,6 +28,8 @@
 #define NORMAL_STATE 4
 #define OFF_STATE 5
 
+#define TRANSIENT_DURATION 8000
+
 //This is an empty v2 usermod template. Please see the file usermod_v2_example.h in the EXAMPLE_v2 usermod folder for documentation on the functions you can use!
 
 class MMA8452Usermod : public Usermod {
@@ -41,6 +43,10 @@ class MMA8452Usermod : public Usermod {
     bool led = false;
     bool no_color_mode = false;
 
+    bool usb = false;
+    bool charged = false;
+    bool shake = false;
+    bool cutoff = false;
 
     unsigned long indicatorActivationTime = 0;
     int8_t lastPreset = 0;
@@ -49,6 +55,10 @@ class MMA8452Usermod : public Usermod {
     Indicator* indicator;
     bool runningIndicator = false;
 
+    uint8_t prevState = SLEEP_STATE;
+    uint8_t state = TRANSIENT_STATE;
+    int transientActivationTime = 0;
+
     // any private methods should go here (non-inline methosd should be defined out of class)
     void handleAccelerometer();
     bool isShaking();
@@ -56,6 +66,7 @@ class MMA8452Usermod : public Usermod {
     float getShakingNorm(float x, float y, float z);
     void printXYZ();
     void indicatorHandler();
+    void stateMachineHandler();
 
   public:
 
@@ -101,6 +112,7 @@ class MMA8452Usermod : public Usermod {
 
       // handleAccelerometer();
       indicatorHandler();
+      stateMachineHandler();
       
       if(isShakingEvent()) {
         printf("Shaking Event\n");

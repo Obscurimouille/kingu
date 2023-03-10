@@ -76,7 +76,7 @@ void MMA8452Usermod::indicatorHandler()
   if(indicatorFlag)
   {
     indicatorActivationTime = millis();
-    lastPreset = currentPreset;
+    lastPreset = currentPreset; // 0 if no selection
     applyPreset(indicator->getPreset());
     indicatorFlag = false;
     runningIndicator = true;
@@ -91,5 +91,87 @@ void MMA8452Usermod::indicatorHandler()
       runningIndicator = false;
       delete indicator;
     }
+  }
+}
+
+void MMA8452Usermod::stateMachineHandler() {
+  prevState = state;
+
+  switch (state)
+  {
+    case SLEEP_STATE:
+      // Reveil par USB -> CHARGING_STATE
+      // reveil par shake -> BATTERY_STATE
+      break;
+
+    case TRANSIENT_STATE:
+      // Plug a usb cable
+      if(usb) {
+        state = CHARGING_STATE;
+        return;
+      }
+      // Shake to go back to normal state
+      if(shake) {
+        state = BATTERY_STATE;
+        return;
+      }
+      // Timeout before get to sleep
+      if((transientActivationTime + TRANSIENT_DURATION) <= millis()) {
+        state = SLEEP_STATE;
+        return;
+      }
+      break;
+
+    case BATTERY_STATE:
+      // Battery is too low
+      if(cutoff) {
+        state = SLEEP_STATE;
+        return;
+      }
+      // Plug a usb cable
+      if(usb) {
+        state = NORMAL_STATE;
+        return;
+      }
+      break;
+
+    case CHARGING_STATE:
+      // Battery is charged
+      if(charged) {
+        state = OFF_STATE;
+        return;
+      }
+      // Unplug usb cable
+      if(!usb) {
+        state = TRANSIENT_STATE;
+        return;
+      }
+      // Shake to turn on
+      if(shake) {
+        state = NORMAL_STATE;
+        return;
+      }
+      break;
+
+    case NORMAL_STATE:
+      // Unplug usb cable then run on battery
+      if(!usb) {
+        state = BATTERY_STATE;
+        return;
+      }
+      break;
+
+    case OFF_STATE:
+      // Unplug usb cable
+      if(!usb) {
+        state = TRANSIENT_STATE;
+        return;
+      }
+      // Shake
+      if(shake) {
+        state = NORMAL_STATE;
+        return;
+      }
+      break;
   }
 }
